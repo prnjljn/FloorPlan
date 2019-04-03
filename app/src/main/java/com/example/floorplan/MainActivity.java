@@ -31,6 +31,7 @@ import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.features2d.DescriptorExtractor;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.FeatureDetector;
@@ -57,10 +58,6 @@ public class MainActivity extends AppCompatActivity {
     private  MenuItem segmentRoom;
     private  MenuItem reset;
     private int threshold = 100;
-    ORB detector;
-    DescriptorMatcher matcher;
-    Mat descriptors2,descriptors1;
-    MatOfKeyPoint keypoints1,keypoints2;
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -174,84 +171,58 @@ public class MainActivity extends AppCompatActivity {
         Mat wall= getWall();
         Core.bitwise_xor(negImageMat,wall,wall);
         Core.bitwise_not(wall,wall);
+
+
         Mat img1 =new Mat();
         try {
             img1 = Utils.loadResource(this, R.drawable.arm);
         }
         catch (IOException e){
-            Toast t =Toast.makeText(this,"Image diiferent type",Toast.LENGTH_SHORT);
+            Toast t =Toast.makeText(this,"Unable to load object imsges",Toast.LENGTH_SHORT);
             t.show();
-
-
         }
-        Imgproc.cvtColor(wall,wall,Imgproc.COLOR_RGB2GRAY);
-        Imgproc.cvtColor(img1,img1,Imgproc.COLOR_RGB2GRAY);
-        descriptors1 = new Mat();
-        keypoints1 = new MatOfKeyPoint();
-        detector.detectAndCompute(img1,new Mat(),keypoints1,descriptors1);
-        descriptors2 = new Mat();
-        keypoints2 = new MatOfKeyPoint();
-        detector.detectAndCompute(wall,new Mat(),keypoints2,descriptors2);
-        List<KeyPoint> kp1 =  keypoints1.toList();
-        List<KeyPoint> kp2 =  keypoints2.toList();
-        List<MatOfDMatch> knnMatches = new ArrayList<>();
-        matcher.knnMatch(descriptors1,descriptors2,knnMatches,2);
-        float ratioThresh = 0.75f;
-        List<DMatch> listOfGoodMatches = new ArrayList<>();
-        for (int i = 0; i < knnMatches.size(); i++) {
-            if (knnMatches.get(i).rows() > 1) {
-                DMatch[] matches = knnMatches.get(i).toArray();
-                if (matches[0].distance < ratioThresh * matches[1].distance) {
-                    listOfGoodMatches.add(matches[0]);
-                }
+
+
+        Mat cannyoutput =new Mat();
+        Imgproc.Canny(wall,cannyoutput,threshold,threshold*2);
+        List<MatOfPoint> contours =new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(cannyoutput,contours,hierarchy,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
+
+        List<MatOfPoint> filtered =new ArrayList<>();
+        for(int i=0;i<contours.size();i++){
+            double area = Imgproc.contourArea(contours.get(i));
+            if(area>0){
+                filtered.add(contours.get(i));
             }
         }
-        MatOfDMatch goodMatches = new MatOfDMatch();
-        goodMatches.fromList(listOfGoodMatches);
-
-        List<Point> obj = new ArrayList<>();
-        List<Point> scene = new ArrayList<>();
-
-        for(int i=0;i<listOfGoodMatches.size();i++){
-            int img1_idx= listOfGoodMatches.get(i).queryIdx;
-            int img2_idx=listOfGoodMatches.get(i).trainIdx;
-            obj.add(kp1.get(img1_idx).pt);
-            scene.add(kp2.get(img2_idx).pt);
+        MatOfPoint2f[] contoursPoly  = new MatOfPoint2f[filtered.size()];
+        Rect[] boundRect = new Rect[filtered.size()];
+        for(int i=0;i<filtered.size();i++){
+            contoursPoly[i] = new MatOfPoint2f();
+            Imgproc.approxPolyDP(new MatOfPoint2f(filtered.get(i).toArray()), contoursPoly[i], 3, true);
+            boundRect[i] = Imgproc.boundingRect(new MatOfPoint(contoursPoly[i].toArray()));
         }
-        MatOfPoint2f objMat = new MatOfPoint2f();
-        objMat.fromList(obj);
-        MatOfPoint2f sceneMat = new MatOfPoint2f();
-        sceneMat.fromList(scene);
-        double thr =3.0;
-        Mat H = Calib3d.findHomography(objMat, sceneMat,Calib3d.RANSAC,thr);
-        Mat objCorners = new Mat(4, 1, CvType.CV_32FC2), sceneCorners = new Mat();
-        float[] objCornersData = new float[(int) (objCorners.total() * objCorners.channels())];objCorners.get(0, 0, objCornersData);
-        objCornersData[0] = 0;
-        objCornersData[1] = 0;
-        objCornersData[2] = img1.cols();
-        objCornersData[3] = 0;
-        objCornersData[4] = img1.cols();
-        objCornersData[5] = img1.rows();
-        objCornersData[6] = 0;
-        objCornersData[7] = img1.rows();
-        objCorners.put(0, 0, objCornersData);
-        Mat imgMatches = new Mat();
-        Core.perspectiveTransform(objCorners, sceneCorners, H);
-        float[] sceneCornersData = new float[(int) (sceneCorners.total() * sceneCorners.channels())];
-        sceneCorners.get(0, 0, sceneCornersData);
-        Imgproc.line(wall, new Point(sceneCornersData[0] + img1.cols(), sceneCornersData[1]),
-                new Point(sceneCornersData[2] + img1.cols(), sceneCornersData[3]), new Scalar(0, 255, 0), 4);
-        Imgproc.line(wall, new Point(sceneCornersData[2] + img1.cols(), sceneCornersData[3]),
-                new Point(sceneCornersData[4] + img1.cols(), sceneCornersData[5]), new Scalar(0, 255, 0), 4);
-        Imgproc.line(wall, new Point(sceneCornersData[4] + img1.cols(), sceneCornersData[5]),
-                new Point(sceneCornersData[6] + img1.cols(), sceneCornersData[7]), new Scalar(0, 255, 0), 4);
-        Imgproc.line(wall, new Point(sceneCornersData[6] + img1.cols(), sceneCornersData[7]),
-                new Point(sceneCornersData[0] + img1.cols(), sceneCornersData[1]), new Scalar(0, 255, 0), 4);
-       Bitmap b= imageBitmap;
-       Utils.matToBitmap(wall,b);
-       imgView.setImageBitmap(b);
+
+        Mat drawing = Mat.zeros(wall.size(), CvType.CV_8UC3);
+        List<MatOfPoint> contoursPolyList = new ArrayList<>(contoursPoly.length);
+        for (MatOfPoint2f poly : contoursPoly) {
+            contoursPolyList.add(new MatOfPoint(poly.toArray()));
+        }
+        for (int i = 0; i < filtered.size(); i++) {
+            Scalar color = new Scalar(255);
+            Imgproc.drawContours(drawing, contoursPolyList, i, color,-1);
+            Imgproc.rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, -1);
+
+        }
+      Bitmap temp= imageBitmap;
+        Utils.matToBitmap(drawing,temp);
+       imgView.setImageBitmap(temp);
+
+
 
     }
+
 
 
     public Mat getWall() {
