@@ -1,5 +1,4 @@
 package com.example.floorplan;
-
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -14,7 +13,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
-
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
@@ -58,6 +56,8 @@ public class MainActivity extends AppCompatActivity {
     private  MenuItem segmentRoom;
     private  MenuItem reset;
     private int threshold = 100;
+
+
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -162,6 +162,18 @@ public class MainActivity extends AppCompatActivity {
         imgView.setImageBitmap(tempImageBitmap);
 
     }
+    public int getMinimumIndex(List<Double> s){
+        int minIndex=0;
+        for(int i=0;i<s.size();i++){
+            if(s.get(minIndex)>s.get(i)){
+                minIndex=i;
+            }
+
+        }
+        return minIndex;
+    }
+
+
 
     public void displayElements() {
         Utils.bitmapToMat(imageBitmap,imageMat);
@@ -173,9 +185,22 @@ public class MainActivity extends AppCompatActivity {
         Core.bitwise_not(wall,wall);
 
 
-        Mat img1 =new Mat();
+        List<Mat> object =new ArrayList<>();
         try {
-            img1 = Utils.loadResource(this, R.drawable.arm);
+            object.add(0,Utils.loadResource(this, R.drawable.arm));
+            object.add(1,Utils.loadResource(this, R.drawable.bed));
+            object.add(2,Utils.loadResource(this, R.drawable.cofee));
+            object.add(3,Utils.loadResource(this, R.drawable.rtable));
+            object.add(4,Utils.loadResource(this, R.drawable.lsofa));
+            object.add(5,Utils.loadResource(this, R.drawable.ssofa));
+            object.add(6,Utils.loadResource(this, R.drawable.sink));
+            object.add(7,Utils.loadResource(this, R.drawable.twinsink));
+            object.add(8,Utils.loadResource(this, R.drawable.ssink));
+            object.add(9,Utils.loadResource(this, R.drawable.lsink));
+            object.add(10,Utils.loadResource(this, R.drawable.tub));
+            object.add(11,Utils.loadResource(this, R.drawable.dtable));
+
+
         }
         catch (IOException e){
             Toast t =Toast.makeText(this,"Unable to load object imsges",Toast.LENGTH_SHORT);
@@ -188,36 +213,52 @@ public class MainActivity extends AppCompatActivity {
         List<MatOfPoint> contours =new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(cannyoutput,contours,hierarchy,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
-
-        List<MatOfPoint> filtered =new ArrayList<>();
+        MatOfPoint2f[] contoursPoly  = new MatOfPoint2f[contours.size()];
+        Rect[] boundRect = new Rect[contours.size()];
         for(int i=0;i<contours.size();i++){
-            double area = Imgproc.contourArea(contours.get(i));
-            if(area>0){
-                filtered.add(contours.get(i));
-            }
-        }
-        MatOfPoint2f[] contoursPoly  = new MatOfPoint2f[filtered.size()];
-        Rect[] boundRect = new Rect[filtered.size()];
-        for(int i=0;i<filtered.size();i++){
             contoursPoly[i] = new MatOfPoint2f();
-            Imgproc.approxPolyDP(new MatOfPoint2f(filtered.get(i).toArray()), contoursPoly[i], 3, true);
+            Imgproc.approxPolyDP(new MatOfPoint2f(contours.get(i).toArray()), contoursPoly[i], 3, true);
             boundRect[i] = Imgproc.boundingRect(new MatOfPoint(contoursPoly[i].toArray()));
         }
-
         Mat drawing = Mat.zeros(wall.size(), CvType.CV_8UC3);
         List<MatOfPoint> contoursPolyList = new ArrayList<>(contoursPoly.length);
         for (MatOfPoint2f poly : contoursPoly) {
             contoursPolyList.add(new MatOfPoint(poly.toArray()));
         }
-        for (int i = 0; i < filtered.size(); i++) {
+        for (int i = 0; i < contours.size(); i++) {
             Scalar color = new Scalar(255);
             Imgproc.drawContours(drawing, contoursPolyList, i, color,-1);
             Imgproc.rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, -1);
 
         }
-      Bitmap temp= imageBitmap;
-        Utils.matToBitmap(drawing,temp);
-       imgView.setImageBitmap(temp);
+       Mat canny =new Mat();
+        Imgproc.Canny(drawing,canny,threshold,threshold*2);
+        List<MatOfPoint> countoursFinal=new ArrayList<>();
+        Mat hierarchyFinal =new Mat();
+        Imgproc.findContours(canny,countoursFinal,hierarchyFinal,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
+        MatOfPoint2f[] countoursPolyFinal=new MatOfPoint2f[countoursFinal.size()];
+        Rect[] boundRectFinal = new Rect[countoursFinal.size()];
+        for(int i=0;i<countoursFinal.size();i++){
+            countoursPolyFinal[i]=new MatOfPoint2f();
+            Imgproc.approxPolyDP(new MatOfPoint2f(countoursFinal.get(i).toArray()),countoursPolyFinal[i],3,true);
+            boundRectFinal[i]=Imgproc.boundingRect(new MatOfPoint(countoursPolyFinal[i].toArray()));
+        }
+        Mat finalIm = Mat.zeros(drawing.size(), CvType.CV_8UC3);
+        List<MatOfPoint> countoursPolyListFinal =new ArrayList<>(countoursPolyFinal.length);
+        for(MatOfPoint2f poly : countoursPolyFinal){
+            countoursPolyListFinal.add(new MatOfPoint(poly.toArray()));
+        }
+        for(int i=0;i<countoursFinal.size();i++){
+            Scalar color =new Scalar(255,0,0,0);
+           // Imgproc.drawContours(finalIm,countoursPolyListFinal,i,color);
+            Imgproc.rectangle(finalIm,boundRectFinal[i].tl(),boundRectFinal[i].br(),color,2);
+        }
+
+      Bitmap temp=imageBitmap;
+      Utils.matToBitmap(finalIm,temp);
+      imgView.setImageBitmap(temp);
+
+
 
 
 
