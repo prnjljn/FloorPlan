@@ -253,10 +253,41 @@ public class MainActivity extends AppCompatActivity {
            // Imgproc.drawContours(finalIm,countoursPolyListFinal,i,color);
             Imgproc.rectangle(finalIm,boundRectFinal[i].tl(),boundRectFinal[i].br(),color,2);
         }
+        List<Mat> detectobj =new ArrayList<>();
+        for(int i=0;i<boundRectFinal.length;i++){
+               Mat temp = new Mat(wall,boundRectFinal[i]);
+               temp=temp.clone();
+               detectobj.add(i,temp);
+        }
+        Mat t =detectobj.get(0);
+        Bitmap m =Bitmap.createBitmap(t.cols(),t.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(t,m);
+        imgView.setImageBitmap(m);
+        DescriptorMatcher matcher=DescriptorMatcher.create(DescriptorMatcher.FLANNBASED);
+        Mat descriptors2=new Mat(),descriptors1=new Mat();
+        MatOfKeyPoint keypoints1=new MatOfKeyPoint();
+        MatOfKeyPoint keypoints2 =new MatOfKeyPoint();
+        ORB detecctor=ORB.create();
+        int[] arr= new int [12];
+        for(int j=0;j<12;j++){
+            detecctor.detectAndCompute(t, new Mat(), keypoints1, descriptors1);
+            detecctor.detectAndCompute(object.get(j), new Mat(), keypoints2, descriptors2);
+            List<MatOfDMatch> knnMatches = new ArrayList<>();
+            matcher.knnMatch(descriptors1, descriptors2, knnMatches, 2);
+            float ratioThresh = 0.7f;
+            List<DMatch> listOfGoodMatches = new ArrayList<>();
+            for (int k = 0; k < knnMatches.size(); k++) {
+                if (knnMatches.get(k).rows() > 1) {
+                    DMatch[] matches = knnMatches.get(k).toArray();
+                    if (matches[0].distance < ratioThresh * matches[1].distance) {
+                        listOfGoodMatches.add(matches[0]);
+                    }
+                }
+            }
+        }
 
-      Bitmap temp=imageBitmap;
-      Utils.matToBitmap(finalIm,temp);
-      imgView.setImageBitmap(temp);
+
+
 
 
 
