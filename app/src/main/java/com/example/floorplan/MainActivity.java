@@ -298,29 +298,104 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < detectobj.size(); i++) {
             Mat temp = detectobj.get(i);
-            Imgproc.resize(temp, temp, new Size(1000, 1000));
+            double he =temp.height();
+            double wi= temp.width();
+            double ratio1 = he/wi;
+            double ratio2 = wi/he;
+            if(ratio1>1.5||ratio2>1.5)
+            {
+                Imgproc.resize(temp, temp, new Size(200, 100));
+
+            }
+            else {
+                Imgproc.resize(temp, temp, new Size(100, 100));
+            }
+
             detectobj.set(i, temp);
         }
+        List<Mat> squareObjects =new ArrayList<>();
+        List<Mat> rectangleObjects =new ArrayList<>();
+        squareObjects.add(object.get(4));
+        squareObjects.add(object.get(5));
+        squareObjects.add(object.get(6));
+        squareObjects.add(object.get(7));
+        squareObjects.add(object.get(8));
+        squareObjects.add(object.get(9));
+        squareObjects.add(object.get(10));
+        squareObjects.add(object.get(11));
+        squareObjects.add(object.get(12));
+        squareObjects.add(object.get(13));
+        squareObjects.add(object.get(14));
+        squareObjects.add(object.get(23));
+        squareObjects.add(object.get(24));
+        squareObjects.add(object.get(25));
+        squareObjects.add(object.get(26));
+        squareObjects.add(object.get(27));
+        squareObjects.add(object.get(28));
+        squareObjects.add(object.get(29));
+        squareObjects.add(object.get(30));
+        rectangleObjects.add(object.get(0));
+        rectangleObjects.add(object.get(1));
+        rectangleObjects.add(object.get(2));
+        rectangleObjects.add(object.get(3));
+        rectangleObjects.add(object.get(15));
+        rectangleObjects.add(object.get(16));
+        rectangleObjects.add(object.get(17));
+        rectangleObjects.add(object.get(18));
+        rectangleObjects.add(object.get(19));
+        rectangleObjects.add(object.get(20));
+        rectangleObjects.add(object.get(21));
+        rectangleObjects.add(object.get(22));
+        rectangleObjects.add(object.get(31));
+        rectangleObjects.add(object.get(32));
+        rectangleObjects.add(object.get(33));
+        rectangleObjects.add(object.get(34));
+        rectangleObjects.add(object.get(35));
+        rectangleObjects.add(object.get(36));
+        rectangleObjects.add(object.get(37));
+        rectangleObjects.add(object.get(38));
 
-        for (int i = 0; i < object.size(); i++) {
-            Mat temp = object.get(i);
-            Imgproc.resize(temp, temp, new Size(1000, 1000));
-            object.set(i, temp);
+        for(int i=0;i<squareObjects.size();i++){
+            Mat temp=squareObjects.get(i);
+            Imgproc.resize(temp,temp,new Size(100,100));
+            squareObjects.set(i,temp);
         }
+        for (int i = 0; i < rectangleObjects.size(); i++) {
+            Mat temp =rectangleObjects.get(i);
+            Imgproc.resize(temp, temp, new Size(200, 100));
+            rectangleObjects.set(i, temp);
+        }
+        
 
-        Mat ma=detectobj.get(2);
+        Mat ma=detectobj.get(12);
         double min=888888888;
         int minIndex=-1;
-        for(int i=0;i<object.size();i++){
-            Mat temp= object.get(i);
-            Mat diff =new Mat();
-            Core.subtract(temp,ma,diff);
-            diff.mul(diff);
-            Scalar s= Core.sumElems(diff);
-            double pa =s.val[0];
-            if(pa<min){
-                min=pa;
-                minIndex=i;
+        if(ma.height()==ma.width()) {
+            for (int i = 0; i < squareObjects.size(); i++) {
+                Mat temp = squareObjects.get(i);
+                Mat diff = new Mat();
+                Core.subtract(temp, ma, diff);
+                diff.mul(diff);
+                Scalar s = Core.sumElems(diff);
+                double pa = s.val[0];
+                if (pa < min) {
+                    min = pa;
+                    minIndex = i;
+                }
+            }
+        }
+        else{
+            for (int i = 0; i < rectangleObjects.size(); i++) {
+                Mat temp = rectangleObjects.get(i);
+                Mat diff = new Mat();
+                Core.subtract(temp, ma, diff);
+                diff.mul(diff);
+                Scalar s = Core.sumElems(diff);
+                double pa = s.val[0];
+                if (pa < min) {
+                    min = pa;
+                    minIndex = i;
+                }
             }
         }
         Toast.makeText(this,"Index"+ minIndex,Toast.LENGTH_SHORT).show();
