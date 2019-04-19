@@ -169,6 +169,8 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTouch(View v, MotionEvent event) {
                 x =(int)event.getX();
                 y = (int)event.getY();
+                x=x*886/720;
+                y=y*886/720;
                     String text = "You click at x = " + x + " and y = " + y;
                     Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
                     displayElements();
@@ -365,41 +367,52 @@ public class MainActivity extends AppCompatActivity {
             Imgproc.resize(temp, temp, new Size(200, 100));
             rectangleObjects.set(i, temp);
         }
-        
 
-        Mat ma=detectobj.get(12);
-        double min=888888888;
-        int minIndex=-1;
-        if(ma.height()==ma.width()) {
-            for (int i = 0; i < squareObjects.size(); i++) {
-                Mat temp = squareObjects.get(i);
-                Mat diff = new Mat();
-                Core.subtract(temp, ma, diff);
-                diff.mul(diff);
-                Scalar s = Core.sumElems(diff);
-                double pa = s.val[0];
-                if (pa < min) {
-                    min = pa;
-                    minIndex = i;
-                }
+
+
+        int index=-1;
+        Point p =new Point(x,y);
+        for(int i=0;i<finalRectangle.size();i++){
+            if(finalRectangle.get(i).contains(p)){
+                index=i;
             }
         }
-        else{
-            for (int i = 0; i < rectangleObjects.size(); i++) {
-                Mat temp = rectangleObjects.get(i);
-                Mat diff = new Mat();
-                Core.subtract(temp, ma, diff);
-                diff.mul(diff);
-                Scalar s = Core.sumElems(diff);
-                double pa = s.val[0];
-                if (pa < min) {
-                    min = pa;
-                    minIndex = i;
+        if(index==-1){
+
+        }
+        else {
+            Mat ma = detectobj.get(index);
+            double min = 888888888;
+            int minIndex = -1;
+            if (ma.height() == ma.width()) {
+                for (int i = 0; i < squareObjects.size(); i++) {
+                    Mat temp = squareObjects.get(i);
+                    Mat diff = new Mat();
+                    Core.subtract(temp, ma, diff);
+                    diff.mul(diff);
+                    Scalar s = Core.sumElems(diff);
+                    double pa = s.val[0];
+                    if (pa < min) {
+                        min = pa;
+                        minIndex = i;
+                    }
+                }
+            } else {
+                for (int i = 0; i < rectangleObjects.size(); i++) {
+                    Mat temp = rectangleObjects.get(i);
+                    Mat diff = new Mat();
+                    Core.subtract(temp, ma, diff);
+                    diff.mul(diff);
+                    Scalar s = Core.sumElems(diff);
+                    double pa = s.val[0];
+                    if (pa < min) {
+                        min = pa;
+                        minIndex = i;
+                    }
                 }
             }
+           Toast.makeText(this, "Index" + minIndex, Toast.LENGTH_SHORT).show();
         }
-        Toast.makeText(this,"Index"+ minIndex,Toast.LENGTH_SHORT).show();
-
 
 
 
