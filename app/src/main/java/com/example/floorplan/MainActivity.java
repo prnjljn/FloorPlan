@@ -6,9 +6,7 @@ import android.net.Uri;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -22,9 +20,7 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
-
 import org.opencv.core.Mat;
-
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
@@ -37,9 +33,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import org.opencv.calib3d.Calib3d;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,6 +50,10 @@ public class MainActivity extends AppCompatActivity {
     int x;
     int y;
     private int threshold = 100;
+    List<Rect> finalRectangle =new ArrayList<>();
+    List<Mat> detectobj = new ArrayList<>();
+    List<Mat> squareObjects =new ArrayList<>();
+    List<Mat> rectangleObjects =new ArrayList<>();
 
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -145,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
             displayElements();
         }
         if(item==segmentRoom){
-            segmentRoom();
+            //();
         }
 
 
@@ -169,8 +168,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean onTouch(View v, MotionEvent event) {
                 x =(int)event.getX();
                 y = (int)event.getY();
-                x=x*886/720;
-                y=y*886/720;
+
                     String text = "You click at x = " + x + " and y = " + y;
                     Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
                     displayElements();
@@ -281,17 +279,17 @@ public class MainActivity extends AppCompatActivity {
         for (MatOfPoint2f poly : countoursPolyFinal) {
             countoursPolyListFinal.add(new MatOfPoint(poly.toArray()));
         }
-        List<Rect> finalRectangle =new ArrayList<>();
+
         for (int i = 0; i < countoursFinal.size(); i++) {
             Scalar color = new Scalar(255, 0, 0, 0);
             // Imgproc.drawContours(finalIm,countoursPolyListFinal,i,color);
-            if(boundRectFinal[i].area()>2100) {
+
                 finalRectangle.add(boundRectFinal[i]);
                 Imgproc.rectangle(finalIm, boundRectFinal[i].tl(), boundRectFinal[i].br(), color, 2);
-            }
+
         }
 
-        List<Mat> detectobj = new ArrayList<>();
+
         for (int i = 0; i < finalRectangle.size(); i++) {
             Mat temp = new Mat(wall, finalRectangle.get(i));
             temp = temp.clone();
@@ -306,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
             double ratio2 = wi/he;
             if(ratio1>1.5||ratio2>1.5)
             {
-                Imgproc.resize(temp, temp, new Size(200, 100));
+                Imgproc.resize(temp, temp, new Size(120, 100));
 
             }
             else {
@@ -315,8 +313,7 @@ public class MainActivity extends AppCompatActivity {
 
             detectobj.set(i, temp);
         }
-        List<Mat> squareObjects =new ArrayList<>();
-        List<Mat> rectangleObjects =new ArrayList<>();
+
         squareObjects.add(object.get(4));
         squareObjects.add(object.get(5));
         squareObjects.add(object.get(6));
@@ -364,13 +361,15 @@ public class MainActivity extends AppCompatActivity {
         }
         for (int i = 0; i < rectangleObjects.size(); i++) {
             Mat temp =rectangleObjects.get(i);
-            Imgproc.resize(temp, temp, new Size(200, 100));
+            Imgproc.resize(temp, temp, new Size(120, 100));
             rectangleObjects.set(i, temp);
         }
 
 
 
         int index=-1;
+        x=x*wall.width()/imgView.getWidth();
+        y=y*wall.width()/imgView.getWidth();
         Point p =new Point(x,y);
         for(int i=0;i<finalRectangle.size();i++){
             if(finalRectangle.get(i).contains(p)){
@@ -378,7 +377,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if(index==-1){
-
+             segmentRoom(p);
         }
         else {
             Mat ma = detectobj.get(index);
@@ -397,6 +396,7 @@ public class MainActivity extends AppCompatActivity {
                         minIndex = i;
                     }
                 }
+                Toast.makeText(this, "Index Square" +minIndex+ getsquareIndex(minIndex), Toast.LENGTH_SHORT).show();
             } else {
                 for (int i = 0; i < rectangleObjects.size(); i++) {
                     Mat temp = rectangleObjects.get(i);
@@ -410,16 +410,24 @@ public class MainActivity extends AppCompatActivity {
                         minIndex = i;
                     }
                 }
+                Toast.makeText(this, "Index Rectangle " +minIndex+ getRectangleIndex(minIndex), Toast.LENGTH_SHORT).show();
             }
-           Toast.makeText(this, "Index" + minIndex, Toast.LENGTH_SHORT).show();
-        }
-
-
-
 
         }
 
 
+
+
+        }
+
+    public String getRectangleIndex(int i){
+        String [] name ={"Bed","Bed","Bed","Bed","Large Sofa","Large Sofa","Large Sofa","Large Sofa","Sink","Sink","Sink","Sink","Twin Sink","Twin Sink","Twin Sink","Twin Sink","Tub","Tub","Tub","Tub"};
+        return  name[i];
+    }
+  public String getsquareIndex(int i){
+        String [] name={"Chair","Chair","Chair","Chair","Coffee Table","Dinning Table","Dinning Table","Large Sink","Large Sink","Large Sink","Large Sink","Small Sink","Small Sink","Small Sink","Small Sink","Small Sofa","Small Sofa","Small Sofa","Small Sofa"};
+        return name[i];
+  }
 
 
     public Mat getWall() {
@@ -433,41 +441,131 @@ public class MainActivity extends AppCompatActivity {
         Core.bitwise_not(tempImageMat, tempImageMat);
         return tempImageMat;
     }
-    public void segmentRoom(){
+    public void segmentRoom(Point p){
         Mat tempImageMat =new Mat();
         Utils.bitmapToMat(imageBitmap,tempImageMat);
         Imgproc.threshold(tempImageMat, tempImageMat, 100, 255, Imgproc.THRESH_BINARY);
         Imgproc.dilate(tempImageMat, tempImageMat, new Mat());
         Imgproc.dilate(tempImageMat, tempImageMat, new Mat());
-        Mat cannyoutput =new Mat();
-        Imgproc.Canny(tempImageMat,cannyoutput,threshold,threshold*2);
+        Imgproc.dilate(tempImageMat, tempImageMat, new Mat());
+        Core.bitwise_not(tempImageMat,tempImageMat);
+        Mat canny =new Mat();
+        Imgproc.Canny(tempImageMat,canny,50,200,3,false);
+        Mat lines = new Mat();
+        Imgproc.HoughLines(canny, lines, 1, Math.PI/180, 150);
+        Mat drawing = Mat.zeros(canny.size(),CvType.CV_8UC3);
+        for (int x = 0; x < lines.rows(); x++) {
+            double rho = lines.get(x, 0)[0],
+                    theta = lines.get(x, 0)[1];
+            double a = Math.cos(theta), b = Math.sin(theta);
+            double x0 = a*rho, y0 = b*rho;
+            Point pt1 = new Point(Math.round(x0 + 1000*(-b)), Math.round(y0 + 1000*(a)));
+            Point pt2 = new Point(Math.round(x0 - 1000*(-b)), Math.round(y0 - 1000*(a)));
+            Imgproc.line(drawing, pt1, pt2, new Scalar(255, 255, 255), 3, Imgproc.LINE_AA, 0);
+        }
+        Mat gray =new Mat();
+        Imgproc.cvtColor(drawing,gray,Imgproc.COLOR_RGB2GRAY);
+        Core.bitwise_not(gray,gray);
+        Imgproc.erode(gray,gray,new Mat());
+        Imgproc.erode(gray,gray,new Mat());
+        Imgproc.erode(gray,gray,new Mat());
+        Imgproc.dilate(gray,gray,new Mat());
+        Imgproc.dilate(gray,gray,new Mat());
+        Imgproc.dilate(gray,gray,new Mat());
+       Mat cannyoutput =new Mat();
+        Imgproc.Canny(gray,cannyoutput,threshold,threshold*2);
         List<MatOfPoint> contours =new ArrayList<>();
         Mat hierarchy = new Mat();
         Imgproc.findContours(cannyoutput,contours,hierarchy,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
         MatOfPoint2f[] contoursPoly  = new MatOfPoint2f[contours.size()];
         Rect[] boundRect = new Rect[contours.size()];
-        Point[] centers = new Point[contours.size()];
-        float[][] radius = new float[contours.size()][1];
         for (int i = 0; i < contours.size(); i++) {
             contoursPoly[i] = new MatOfPoint2f();
             Imgproc.approxPolyDP(new MatOfPoint2f(contours.get(i).toArray()), contoursPoly[i], 3, true);
             boundRect[i] = Imgproc.boundingRect(new MatOfPoint(contoursPoly[i].toArray()));
-            centers[i] = new Point();
-            Imgproc.minEnclosingCircle(contoursPoly[i], centers[i], radius[i]);
         }
-            Mat drawing = Mat.zeros(cannyoutput.size(), CvType.CV_8UC3);
-            List<MatOfPoint> contoursPolyList = new ArrayList<>(contoursPoly.length);
-            for (MatOfPoint2f poly : contoursPoly) {
-                contoursPolyList.add(new MatOfPoint(poly.toArray()));
-            }
+        Mat drawingfinal = Mat.zeros(cannyoutput.size(), CvType.CV_8UC3);
+        List<MatOfPoint> contoursPolyList = new ArrayList<>(contoursPoly.length);
+        for (MatOfPoint2f poly : contoursPoly) {
+            contoursPolyList.add(new MatOfPoint(poly.toArray()));
+        }
+        Scalar [] color={new Scalar(0,255,0),new Scalar(255,0,0),new Scalar(0,0,255)};
         for (int i = 0; i < contours.size(); i++) {
-            Scalar color = new Scalar(255);
-            Imgproc.drawContours(drawing, contoursPolyList, i, color);
-            Imgproc.rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2);
+
+            //Imgproc.drawContours(drawingfinal, contoursPolyList, i, color[i%3],-1);
+
+            Imgproc.rectangle(drawingfinal, boundRect[i].tl(), boundRect[i].br(), color[i%3],-1);
+
+
         }
-            Bitmap temp= imageBitmap;
-            Utils.matToBitmap(drawing,temp);
-            imgView.setImageBitmap(temp);
+
+        int index =-1;
+        for(int i=0;i<boundRect.length;i++){
+            if(boundRect[i].contains(p)){
+                index=i;
+                break;
+            }
+        }
+        List<Integer> sqob =new ArrayList<>();
+        List<Integer> recob =new ArrayList<>();
+        Rect room =boundRect[index];
+        for(int k=0;k<finalRectangle.size();k++){
+            if(room.contains( new Point(finalRectangle.get(k).x,finalRectangle.get(k).y))){
+                Mat ma= detectobj.get(k);
+                double min = 888888888;
+                int minIndex = -1;
+                if (ma.height() == ma.width()) {
+                    for (int i = 0; i < squareObjects.size(); i++) {
+                        Mat temp = squareObjects.get(i);
+                        Mat diff = new Mat();
+                        Core.subtract(temp, ma, diff);
+                        diff.mul(diff);
+                        Scalar s = Core.sumElems(diff);
+                        double pa = s.val[0];
+                        if (pa < min) {
+                            min = pa;
+                            minIndex = i;
+                        }
+                    }
+                    sqob.add(minIndex);
+                } else {
+                    for (int i = 0; i < rectangleObjects.size(); i++) {
+                        Mat temp = rectangleObjects.get(i);
+                        Mat diff = new Mat();
+                        Core.subtract(temp, ma, diff);
+                        diff.mul(diff);
+                        Scalar s = Core.sumElems(diff);
+                        double pa = s.val[0];
+                        if (pa < min) {
+                            min = pa;
+                            minIndex = i;
+                        }
+                    }
+                    recob.add(minIndex);
+                }
+            }
+        }
+        String name="";
+        if(recob.contains(0)||recob.contains(1)||recob.contains(2)||recob.contains(3)){
+            name ="BedRoom";
+        }
+        if(recob.contains(16)||recob.contains(17)||recob.contains(18)||recob.contains(19)){
+            name="BathRoom";
+        }
+        if((recob.contains(4)||recob.contains(5)||recob.contains(6)||recob.contains(7))&&!(recob.contains(0)||recob.contains(1)||recob.contains(2)||recob.contains(3))){
+            name="DrwaingRoom";
+        }
+        if(sqob.contains(5)||sqob.contains(6)&&!(recob.contains(4)||recob.contains(5)||recob.contains(6)||recob.contains(7))){
+            name="Kitchen";
+        }
+        if((sqob.contains(15)||sqob.contains(16)||sqob.contains(17)||sqob.contains(18))&&!(recob.contains(0)||recob.contains(1)||recob.contains(2)||recob.contains(3))){
+            name="DrawingRoom";
+        }
+        Toast.makeText(this,name,Toast.LENGTH_LONG).show();
+
+
+
+
 
 
 
