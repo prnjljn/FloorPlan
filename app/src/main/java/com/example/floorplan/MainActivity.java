@@ -7,8 +7,6 @@ import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
@@ -43,10 +41,6 @@ public class MainActivity extends AppCompatActivity {
     Bitmap imageBitmap;
     Bitmap bitmap;
     Mat imageMat;
-    private MenuItem displayBoundary;
-    private  MenuItem displayElement;
-    private  MenuItem segmentRoom;
-    private  MenuItem reset;
     int x;
     int y;
     private int threshold = 100;
@@ -126,41 +120,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-    @Override
-    public  boolean onCreateOptionsMenu(Menu menu){
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        displayBoundary =menu.add("Display Boundary");
-        displayElement=menu.add("Display Elements");
-        segmentRoom=menu.add("Segment Room");
-        return true;
-    }
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item){
-        if(item==displayBoundary){
 
-            displayBoundary();
-        }
-        if(item==displayElement){
-            displayElements();
-        }
-        if(item==segmentRoom){
-            //();
-        }
-
-
-
-        return true;
-    }
-
-
-    public void displayBoundary(){
-        Mat boun =getWall();
-        Core.bitwise_not(boun,boun);
-        Bitmap tempImageBitmap =imageBitmap;
-        Utils.matToBitmap(boun,tempImageBitmap);
-        imgView.setImageBitmap(tempImageBitmap);
-
-    }
     public void addOnTouchListener(){
         ImageView temp =imgView;
         temp.setOnTouchListener(new View.OnTouchListener() {
@@ -169,8 +129,7 @@ public class MainActivity extends AppCompatActivity {
                 x =(int)event.getX();
                 y = (int)event.getY();
 
-                    String text = "You click at x = " + x + " and y = " + y;
-                    Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
+
                     displayElements();
                 return false;
             }
@@ -256,12 +215,12 @@ public class MainActivity extends AppCompatActivity {
         }
         for (int i = 0; i < contours.size(); i++) {
             Scalar color = new Scalar(255);
-           // Imgproc.drawContours(drawing, contoursPolyList, i, color, -1);
             if(boundRect[i].area()>800) {
                 Imgproc.rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, -1);
             }
 
         }
+
         Mat canny = new Mat();
         Imgproc.Canny(drawing, canny, threshold, threshold * 2);
         List<MatOfPoint> countoursFinal = new ArrayList<>();
@@ -282,10 +241,9 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < countoursFinal.size(); i++) {
             Scalar color = new Scalar(255, 0, 0, 0);
-            // Imgproc.drawContours(finalIm,countoursPolyListFinal,i,color);
 
-                finalRectangle.add(boundRectFinal[i]);
-                Imgproc.rectangle(finalIm, boundRectFinal[i].tl(), boundRectFinal[i].br(), color, 2);
+                    finalRectangle.add(boundRectFinal[i]);
+                    Imgproc.rectangle(finalIm, boundRectFinal[i].tl(), boundRectFinal[i].br(), color, 2);
 
         }
 
@@ -396,7 +354,7 @@ public class MainActivity extends AppCompatActivity {
                         minIndex = i;
                     }
                 }
-                Toast.makeText(this, "Index Square" +minIndex+ getsquareIndex(minIndex), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "" + getsquareIndex(minIndex), Toast.LENGTH_LONG).show();
             } else {
                 for (int i = 0; i < rectangleObjects.size(); i++) {
                     Mat temp = rectangleObjects.get(i);
@@ -410,7 +368,7 @@ public class MainActivity extends AppCompatActivity {
                         minIndex = i;
                     }
                 }
-                Toast.makeText(this, "Index Rectangle " +minIndex+ getRectangleIndex(minIndex), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "" + getRectangleIndex(minIndex), Toast.LENGTH_LONG).show();
             }
 
         }
@@ -492,8 +450,6 @@ public class MainActivity extends AppCompatActivity {
         Scalar [] color={new Scalar(0,255,0),new Scalar(255,0,0),new Scalar(0,0,255)};
         for (int i = 0; i < contours.size(); i++) {
 
-            //Imgproc.drawContours(drawingfinal, contoursPolyList, i, color[i%3],-1);
-
             Imgproc.rectangle(drawingfinal, boundRect[i].tl(), boundRect[i].br(), color[i%3],-1);
 
 
@@ -506,68 +462,66 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
-        List<Integer> sqob =new ArrayList<>();
-        List<Integer> recob =new ArrayList<>();
-        Rect room =boundRect[index];
-        for(int k=0;k<finalRectangle.size();k++){
-            if(room.contains( new Point(finalRectangle.get(k).x,finalRectangle.get(k).y))){
-                Mat ma= detectobj.get(k);
-                double min = 888888888;
-                int minIndex = -1;
-                if (ma.height() == ma.width()) {
-                    for (int i = 0; i < squareObjects.size(); i++) {
-                        Mat temp = squareObjects.get(i);
-                        Mat diff = new Mat();
-                        Core.subtract(temp, ma, diff);
-                        diff.mul(diff);
-                        Scalar s = Core.sumElems(diff);
-                        double pa = s.val[0];
-                        if (pa < min) {
-                            min = pa;
-                            minIndex = i;
+        if(index!=-1) {
+            List<Integer> sqob = new ArrayList<>();
+            List<Integer> recob = new ArrayList<>();
+            Rect room = boundRect[index];
+            for (int k = 0; k < finalRectangle.size(); k++) {
+                if (room.contains(new Point(finalRectangle.get(k).x, finalRectangle.get(k).y))) {
+                    Mat ma = detectobj.get(k);
+                    double min = 888888888;
+                    int minIndex = -1;
+                    if (ma.height() == ma.width()) {
+                        for (int i = 0; i < squareObjects.size(); i++) {
+                            Mat temp = squareObjects.get(i);
+                            Mat diff = new Mat();
+                            Core.subtract(temp, ma, diff);
+                            diff.mul(diff);
+                            Scalar s = Core.sumElems(diff);
+                            double pa = s.val[0];
+                            if (pa < min) {
+                                min = pa;
+                                minIndex = i;
+                            }
                         }
-                    }
-                    sqob.add(minIndex);
-                } else {
-                    for (int i = 0; i < rectangleObjects.size(); i++) {
-                        Mat temp = rectangleObjects.get(i);
-                        Mat diff = new Mat();
-                        Core.subtract(temp, ma, diff);
-                        diff.mul(diff);
-                        Scalar s = Core.sumElems(diff);
-                        double pa = s.val[0];
-                        if (pa < min) {
-                            min = pa;
-                            minIndex = i;
+                        sqob.add(minIndex);
+                    } else {
+                        for (int i = 0; i < rectangleObjects.size(); i++) {
+                            Mat temp = rectangleObjects.get(i);
+                            Mat diff = new Mat();
+                            Core.subtract(temp, ma, diff);
+                            diff.mul(diff);
+                            Scalar s = Core.sumElems(diff);
+                            double pa = s.val[0];
+                            if (pa < min) {
+                                min = pa;
+                                minIndex = i;
+                            }
                         }
+                        recob.add(minIndex);
                     }
-                    recob.add(minIndex);
                 }
             }
-        }
-        String name="";
-        if(recob.contains(0)||recob.contains(1)||recob.contains(2)||recob.contains(3)){
-            name ="BedRoom";
-        }
-        if(recob.contains(16)||recob.contains(17)||recob.contains(18)||recob.contains(19)){
-            name="BathRoom";
-        }
-        if((recob.contains(4)||recob.contains(5)||recob.contains(6)||recob.contains(7))&&!(recob.contains(0)||recob.contains(1)||recob.contains(2)||recob.contains(3))){
-            name="DrwaingRoom";
-        }
-        if(sqob.contains(5)||sqob.contains(6)&&!(recob.contains(4)||recob.contains(5)||recob.contains(6)||recob.contains(7))){
-            name="Kitchen";
-        }
-        if((sqob.contains(15)||sqob.contains(16)||sqob.contains(17)||sqob.contains(18))&&!(recob.contains(0)||recob.contains(1)||recob.contains(2)||recob.contains(3))){
-            name="DrawingRoom";
-        }
-        Toast.makeText(this,name,Toast.LENGTH_LONG).show();
+            String name = "";
+            if (recob.contains(0) || recob.contains(1) || recob.contains(2) || recob.contains(3)) {
+                name = "BedRoom";
+            }
+            if (recob.contains(16) || recob.contains(17) || recob.contains(18) || recob.contains(19)) {
+                name = "BathRoom";
+            }
+            if ((recob.contains(4) || recob.contains(5) || recob.contains(6) || recob.contains(7)) && !(recob.contains(0) || recob.contains(1) || recob.contains(2) || recob.contains(3))) {
+                name = "DrwaingRoom";
+            }
+            if (sqob.contains(5) || sqob.contains(6) && !(recob.contains(4) || recob.contains(5) || recob.contains(6) || recob.contains(7))) {
+                name = "Kitchen";
+            }
+            if ((sqob.contains(15) || sqob.contains(16) || sqob.contains(17) || sqob.contains(18)) && !(recob.contains(0) || recob.contains(1) || recob.contains(2) || recob.contains(3))) {
+                name = "DrawingRoom";
+            }
+            Toast.makeText(this, name, Toast.LENGTH_LONG).show();
 
 
-
-
-
-
+        }
 
     }
 }
